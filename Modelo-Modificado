@@ -1,0 +1,141 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+import pandas as pd
+def modelo(x,t):  
+    M = 0.0289  # Massa molar do gás [kg/mol]
+    Ta = 293  # Temperatura da região anular [K]
+    La = 230.87  # Comprimento da região anular [m]
+    Va = 29.012  # Volume da região anular [m3]
+    ro = 923.9  # Densidade do óleo no reservatório [kg/m3]
+    Tt = 293  # Temperatura no tubo [K]
+    Lt = 1217  # Comprimento do tubo [m]
+    Lr = 132  # Distância do reservatório até o ponto de injeção [m]
+    Ar = 0.203 # Área da seção transversal abaixo do ponto injeção[m2]
+    At = 0.203  # Área da seção transversal acima do ponto injeção[m2]
+    Cpc = 1.655e-3  # [m2]
+    Civ = 1.5e-4  # [m2]
+    Cr = 2.623e-4  # [m2]
+    Pr = 1.81423e7 #Pressao no reservatório [Pa]
+    Ps = 1.704669e6   # Pressão no separador [Pa]
+    Vo = 0.001082  # volume específico do óleo
+    g = 9.81  # m/s2
+    R = 8.314  # J/mol.K
+    x = x.tolist()
+    Pt=((R*Tt/M)*(x[1]/(Lt*At-Vo*x[2] ))) 
+    m3 = max(0,(Pt-Ps))
+    Pai=((R*Ta/(Va*M)+g*La/Va)*x[0]) # Pressão anular injeção
+    ro_m = ( (x[1]) + x[2]) / (Lt*Ar) 
+    D = np.sqrt(At*4 / 3.1416)
+    wpc = Cpc*np.sqrt(ro_m*m3)
+    veloc = wpc/At # Velocidade do escoamento
+    mi_m = (x[2]/(x[1] + x[2]) ) *0.002 + ( x[1]/(x[1] + x[2]) ) * 0.007e-3 # densidade da mistura óleo/gás no tubo
+    Re = ro_m * veloc * D / mi_m
+    if Re< 50000:
+        fa = 0.316*Re**-0.25
+    else:
+        fa = 0.184*Re**-0.20
+    gradf = fa*ro_m* (veloc**2) / 2*D # Fator de correção da pressão
+    Pti=(Pt + (g/At)*(x[1] + x[2] )) + gradf*Lt # Pressão no tubo no ponto de injeção corrigida
+    Ptb = (Pti + ro*g*Lr)+ gradf*Lr # Pressão no fundo do tubo corrigida
+    ro_ai = (M*Pai/(R*Ta)) # Densidade do gás na regiao anular no ponto de injeção
+    m1 = max(0,(Pai-Pti))
+    m2 = max(0,(Pr-Ptb))
+    wgc = 16 # Vazão do gás que entra na região anular
+    wiv=(Civ*np.sqrt(ro_ai*m1)) # Vazão de gás na Válvula de gas lift
+    wpc = Cpc*np.sqrt(ro_m*m3) # Vazão total na cabeça do poço
+    wpg = x[1]*wpc/( x[1] + x[2] ) # Vazão de gás na cabeça do poço
+    wpo = x[2]*wpc/( x[1] + x[2] ) # Vazão de óleo na cabeça do poço
+    wr = (Cr*np.sqrt(ro*m2)) # Vazão de óleo reservatório / tubo
+    dxdt = np.zeros(3) # Matriz com equações de balanço diferencial
+    dxdt[0] = wgc - wiv
+    dxdt[1] = wiv - wpg
+    dxdt[2] = wr - wpo
+    return dxdt
+        
+def plot(x,t): # Função para plotar as vazões e pressões =
+    M = 0.0289  # Massa molar do gás [kg/mol]
+    Ta = 293  # Temperatura da região anular [K]
+    La = 230.87  # Comprimento da região anular [m]
+    Va = 29.012  # Volume da região anular [m3]
+    ro = 923.9  # Densidade do óleo no reservatório [kg/m3]
+    Tt = 293  # Temperatura no tubo [K]
+    Lt = 1217  # Comprimento do tubo [m]
+    Lr = 132  # Distância do reservatório até o ponto de injeção [m]
+    Ar = 0.203 # Área da seção transversal abaixo do ponto injeção[m2]
+    At = 0.203  # Área da seção transversal acima do ponto injeção[m2]
+    Cpc = 1.655e-3  # [m2]
+    Civ = 1.5e-4  # [m2]
+    Cr = 2.623e-4  # [m2]
+    Pr = 1.81423e7 #Pressao no reservatório [Pa]
+    Ps = 1.704669e6   # Pressão no separador [Pa]
+    Vo = 0.001082  # volume específico do óleo
+    g = 9.81  # m/s2
+    R = 8.314  # J/mol.K
+    x = x.tolist()
+    Pt=((R*Tt/M)*(x[1]/(Lt*At-Vo*x[2] ))) 
+    m3 = max(0,(Pt-Ps))
+    Pai=((R*Ta/(Va*M)+g*La/Va)*x[0]) # Pressão anular injeção
+    ro_m = ( (x[1]) + x[2]) / (Lt*Ar) 
+    D = np.sqrt(At*4 / 3.1416)
+    wpc = Cpc*np.sqrt(ro_m*m3)
+    veloc = wpc/At # Velocidade do escoamento
+    mi_m = (x[2]/(x[1] + x[2]) ) *0.002 + ( x[1]/(x[1] + x[2]) ) * 0.007e-3 # densidade da mistura óleo/gás no tubo
+    Re = ro_m * veloc * D / mi_m
+    if Re< 50000:
+        fa = 0.316*Re**-0.25
+    else:
+        fa = 0.184*Re**-0.20
+    gradf = fa*ro_m* (veloc**2) / 2*D # Fator de correção da pressão
+    
+    Pti=(Pt + (g/At)*(x[1] + x[2] )) + gradf*Lt # Pressão no tubo no ponto de injeção corrigida
+    Ptb = (Pti + ro*g*Lr)+ gradf*Lr # Pressão no fundo do tubo corrigida
+    ro_ai = (M*Pai/(R*Ta)) # Densidade do gás na regiao anular no ponto de injeção
+    m1 = max(0,(Pai-Pti))
+    m2 = max(0,(Pr-Ptb))
+    wiv=(Civ*np.sqrt(ro_ai*m1)) # Vazão de gás na Válvula de gas lift
+    wpc = Cpc*np.sqrt(ro_m*m3) # Vazão na válvula Choke (Vazão total na cabeça do poço)
+    wpg = x[1]*wpc/( x[1] + x[2] ) # Vazão de gás na cabeça do poço
+    wpo = x[2]*wpc/( x[1] + x[2] ) # Vazão de óleo na cabeça do poço
+    wr = (Cr*np.sqrt(ro*m2)) # Vazão de óleo na fronteira reservatório / tubo
+    return [wiv, wr, wpc, wpg, wpo, Pt, Pti, Ptb, Pai]
+x0 = [4350.1, 10951, 86038] # Condições iniciais
+t = np.linspace(0, 3600*50, 10000) # tempo [s]
+f = odeint(modelo, x0, t)
+k = 0
+g = []
+for i in t:
+    g = np.append(g, plot(f[k],i))
+    k += 1
+g = np.reshape(g,(len(t),9))    
+
+# Plotando resultados
+plt.plot(t, f[:,0],label='gás no anular')
+plt.plot(t, f[:,1],label='gás na coluna')
+plt.plot(t, f[:,2],label='óleo na coluna')
+plt.legend(['gás no anular','gás na coluna','óleo na coluna'],loc='lower right')
+plt.xlabel('Tempo [s]')
+plt.ylabel('')
+plt.title('Acúmulo [kg]')
+plt.show()
+plt.plot(t, g[:,0],label='gás na válvula')
+plt.plot(t, g[:,1],label='total na cabeça')
+plt.plot(t, g[:,2],label='gás na cabeça')
+plt.plot(t, g[:,3],label='óleo na cabeça')
+plt.plot(t, g[:,4],label=' óleo no reservatório')
+plt.legend(['gás na válvula','total na cabeça','gás na cabeça','óleo na cabeça','óleo no reservatório'],loc='lower right')
+plt.xlabel('Tempo [s]')
+plt.ylabel('')
+plt.title('Vazão mássica [kg/s]')
+plt.show()
+plt.plot(t, g[:,5],label='anular na injeção')
+plt.plot(t, g[:,6],label='topo do tubo')
+plt.plot(t, g[:,7],label=' tubo na injeção')
+plt.plot(t, g[:,8],label='fundo do tubo')
+plt.legend(['anular na injeção','topo do tubo','tubo na injeção','fundo do tubo'],loc='lower right')
+plt.xlabel('Tempo [s]')
+plt.ylabel('')
+plt.title('Pressão [Pa]')
+plt.show()
+df = pd.DataFrame(t)
+df.to_csv("Teste01", index=False)
